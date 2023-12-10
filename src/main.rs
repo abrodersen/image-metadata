@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use clap::Parser;
 use git2::{Repository, ObjectType};
+use log::debug;
 use serde::{Serialize, Deserialize};
 
 #[derive(Parser, Debug)]
@@ -34,18 +35,23 @@ struct BuildSpec {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
     let args = Args::try_parse()?;
     let repo = Repository::open(&args.repo)?;
     let repo_path = Path::new(&args.repo);
 
-    let t1 = repo
+    let r1 = repo
         .revparse_single(&args.old_rev)
-        .context("failed to find old revision")?
-        .peel(ObjectType::Tree)?;
-    let t2 = repo
+        .context("failed to find old revision")?;
+    debug!("old_rev = {}", r1.id());
+
+    let r2 = repo
         .revparse_single(&args.new_rev)
-        .context("failed to find new revision")?
-        .peel(ObjectType::Tree)?;
+        .context("failed to find new revision")?;
+    debug!("new_rev = {}", r2.id());
+    
+    let t1 = r1.peel(ObjectType::Tree)?;
+    let t2 = r2.peel(ObjectType::Tree)?;
 
     let diff = repo.diff_tree_to_tree(t1.as_tree(), t2.as_tree(), None)?;
 
@@ -58,6 +64,7 @@ fn main() -> Result<()> {
             let f_path   = repo_path.join(new_path);
             let f_parent = f_path.parent().context("unexpected missing parent")?;
             let d_full   = f_parent.canonicalize().context("failed to canonicalize path")?;
+            debug!("identified modified path: {}", d_full.display());
             Ok(Some(d_full))
         })
         .collect::<Result<Vec<Option<PathBuf>>>>()?
@@ -69,6 +76,7 @@ fn main() -> Result<()> {
         .into_iter()
         .map(|p| {
             let meta_path = p.join(Path::new("image.yaml"));
+            debug!("checking path: {}", meta_path.display());
             let meta_file = match File::open(meta_path) {
                 Ok(f) => f,
                 Err(e) if e.kind() == ErrorKind::NotFound => return Ok(None),
