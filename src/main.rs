@@ -23,8 +23,9 @@ struct Args {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ImageConfig {
-    image: String,
-    tag:   String,
+    image:     String,
+    tag:       String,
+    build_num: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -32,6 +33,8 @@ struct BuildSpec {
     image: String,
     tag:   String,
     path:  PathBuf,
+
+    build_num: Option<String>,
 }
 
 fn main() -> Result<()> {
@@ -87,6 +90,7 @@ fn main() -> Result<()> {
                 image: config.image,
                 tag:   config.tag,
                 path:  p,
+                build_num: config.build_num,
             };
             Ok(Some(spec))
         })
