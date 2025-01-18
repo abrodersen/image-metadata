@@ -1,5 +1,5 @@
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -26,6 +26,7 @@ struct ImageConfig {
     image:     String,
     tag:       String,
     build_num: Option<String>,
+    args:      Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,6 +34,7 @@ struct BuildSpec {
     image: String,
     tag:   String,
     path:  PathBuf,
+    args:  HashMap<String, String>,
 
     build_num: Option<String>,
 }
@@ -86,10 +88,12 @@ fn main() -> Result<()> {
                 Err(e) => return Err(e).context("failed to open file"),
             };
             let config: ImageConfig = serde_yaml::from_reader(meta_file)?;
+            let args = config.args.unwrap_or_else(|| HashMap::new());
             let spec = BuildSpec {
                 image: config.image,
                 tag:   config.tag,
                 path:  p,
+                args: args,
                 build_num: config.build_num,
             };
             Ok(Some(spec))
